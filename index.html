@@ -24,6 +24,12 @@
           <strong id="songTitle">Nocturne in Neon</strong>
         </div>
         <div class="header-actions">
+          <label class="library-control" for="midiLibrary">
+            <span class="eyebrow">MIDI-BIBLIOTHEK</span>
+            <select id="midiLibrary" aria-label="MIDI aus der Bibliothek laden">
+              <option value="">Titel auswählen …</option>
+            </select>
+          </label>
           <label class="button button-secondary" for="midiInput">
             <span class="icon">↥</span> MIDI öffnen
           </label>
@@ -51,10 +57,15 @@
         <div class="time muted" id="duration">0:24</div>
         <div class="divider"></div>
         <button class="plain-control" id="restartButton" aria-label="Zum Anfang">↶</button>
+        <label class="tempo-control" for="tempo">
+          <span>Tempo</span>
+          <input id="tempo" type="range" min="40" max="240" value="120" step="1" />
+          <output id="tempoValue" for="tempo">120 BPM</output>
+        </label>
         <label class="volume-control" aria-label="Lautstärke">
           <span>◖</span><input id="volume" type="range" min="0" max="1" value="0.72" step="0.01" />
         </label>
-        <div class="keyboard-hint"><kbd>A</kbd><kbd>W</kbd><kbd>S</kbd><span>zum Mitspielen</span></div>
+        <div class="keyboard-hint"><kbd>Y</kbd><kbd>S</kbd><kbd>X</kbd><span>zum Mitspielen</span></div>
       </footer>
     </main>
 
@@ -62,8 +73,9 @@
       <button class="dialog-close" id="closeHelp" aria-label="Schließen">×</button>
       <span class="eyebrow accent">PLAY ALONG</span>
       <h2>Deine Tastatur ist ein Klavier.</h2>
-      <p>Die untere Reihe spielt weiße Tasten, die obere Reihe die passenden Halbtöne.</p>
-      <div class="key-map"><code>A W S E D F T G Z H U J K</code><span>C4 — C5</span></div>
+      <p>Zwei Tastenreihen spielen zwei volle Oktaven. Die Buchstaben stehen auch direkt auf der Klaviatur.</p>
+      <div class="key-map"><code>Y S X D C V G B H N J M ,</code><span>C3 — C4 · untere Oktave</span></div>
+      <div class="key-map"><code>Q 2 W 3 E R 5 T 6 Z 7 U I</code><span>C4 — C5 · obere Oktave</span></div>
       <p class="small">Leertaste: Play / Pause · R: Neustart</p>
     </dialog>
 
