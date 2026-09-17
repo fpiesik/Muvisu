@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#090b10" />
+    <meta name="description" content="Musefall – ein moderner MIDI-Visualizer für den Browser." />
+    <title>Musefall · MIDI Visualizer</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css" />
+    <script src="https://cdn.jsdelivr.net/npm/soundfont-player@0.12.0/dist/soundfont-player.min.js"></script>
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="topbar">
+        <a class="brand" href="#" aria-label="Musefall Startseite">
+          <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+          <span>Musefall</span>
+        </a>
+        <div class="song-meta">
+          <span class="eyebrow">NOW PLAYING</span>
+          <strong id="songTitle">Nocturne in Neon</strong>
+        </div>
+        <div class="header-actions">
+          <label class="button button-secondary" for="midiInput">
+            <span class="icon">↥</span> MIDI öffnen
+          </label>
+          <input id="midiInput" type="file" accept=".mid,.midi,audio/midi,audio/x-midi" hidden />
+          <button class="icon-button" id="helpButton" aria-label="Tastaturbelegung anzeigen">?</button>
+        </div>
+      </header>
+
+      <section class="stage" aria-label="MIDI-Visualisierung">
+        <canvas id="visualizer"></canvas>
+        <div class="stage-copy" id="emptyState">
+          <span class="eyebrow accent">MIDI VISUALIZER</span>
+          <h1>Musik wird<br /><em>sichtbar.</em></h1>
+          <p>Öffne eine MIDI-Datei oder spiele direkt mit deiner Computertastatur.</p>
+          <label class="button button-primary" for="midiInput">MIDI auswählen <span>↗</span></label>
+        </div>
+        <div class="sound-status" id="soundStatus"><span></span> Piano wird geladen …</div>
+        <div id="piano" class="piano" aria-label="Klaviatur"></div>
+      </section>
+
+      <footer class="transport">
+        <button class="play-button" id="playButton" aria-label="Wiedergabe starten"><span>▶</span></button>
+        <div class="time" id="currentTime">0:00</div>
+        <input class="timeline" id="timeline" type="range" min="0" max="1000" value="0" aria-label="Position" />
+        <div class="time muted" id="duration">0:24</div>
+        <div class="divider"></div>
+        <button class="plain-control" id="restartButton" aria-label="Zum Anfang">↶</button>
+        <label class="volume-control" aria-label="Lautstärke">
+          <span>◖</span><input id="volume" type="range" min="0" max="1" value="0.72" step="0.01" />
+        </label>
+        <div class="keyboard-hint"><kbd>A</kbd><kbd>W</kbd><kbd>S</kbd><span>zum Mitspielen</span></div>
+      </footer>
+    </main>
+
+    <dialog id="helpDialog">
+      <button class="dialog-close" id="closeHelp" aria-label="Schließen">×</button>
+      <span class="eyebrow accent">PLAY ALONG</span>
+      <h2>Deine Tastatur ist ein Klavier.</h2>
+      <p>Die untere Reihe spielt weiße Tasten, die obere Reihe die passenden Halbtöne.</p>
+      <div class="key-map"><code>A W S E D F T G Z H U J K</code><span>C4 — C5</span></div>
+      <p class="small">Leertaste: Play / Pause · R: Neustart</p>
+    </dialog>
+
+    <div class="toast" id="toast" role="status"></div>
+    <script src="app.js"></script>
+  </body>
+</html>
