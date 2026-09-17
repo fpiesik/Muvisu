@@ -28,6 +28,7 @@ let startedAt = 0;
 let playing = false;
 let scheduled = [];
 const held = new Map();
+const pointerNotes = new Map();
 const noteGeometry = new Map();
 const arrivingNotes = new Map();
 let noteGeometryDirty = true;
@@ -70,9 +71,51 @@ function setupPiano() {
       piano.appendChild(key);
     }
   }
-  piano.addEventListener('pointerdown', e => { const key = e.target.closest('.key'); if (key) pressNote(+key.dataset.note, 'pointer'); });
-  window.addEventListener('pointerup', () => releaseNote('pointer'));
+  piano.addEventListener('pointerdown', handlePointerDown);
+  piano.addEventListener('pointermove', handlePointerMove);
+  piano.addEventListener('pointerup', handlePointerEnd);
+  piano.addEventListener('pointercancel', handlePointerEnd);
+  piano.addEventListener('lostpointercapture', handlePointerEnd);
   noteGeometryDirty = true;
+}
+
+function pointerKeyAt(x, y) {
+  const key = document.elementFromPoint(x, y)?.closest('.key');
+  return key && piano.contains(key) ? key : null;
+}
+
+function handlePointerDown(event) {
+  const key = event.target.closest('.key');
+  if (!key) return;
+  event.preventDefault();
+  piano.setPointerCapture?.(event.pointerId);
+  const id = `pointer-${event.pointerId}`;
+  const midi = +key.dataset.note;
+  pointerNotes.set(event.pointerId, midi);
+  pressNote(midi, id);
+}
+
+function handlePointerMove(event) {
+  if (!pointerNotes.has(event.pointerId)) return;
+  event.preventDefault();
+  const key = pointerKeyAt(event.clientX, event.clientY);
+  const nextMidi = key ? +key.dataset.note : null;
+  const previousMidi = pointerNotes.get(event.pointerId);
+  if (nextMidi === previousMidi) return;
+  const id = `pointer-${event.pointerId}`;
+  releaseNote(id);
+  if (nextMidi === null) pointerNotes.set(event.pointerId, null);
+  else {
+    pointerNotes.set(event.pointerId, nextMidi);
+    pressNote(nextMidi, id);
+  }
+}
+
+function handlePointerEnd(event) {
+  if (!pointerNotes.has(event.pointerId)) return;
+  event.preventDefault();
+  releaseNote(`pointer-${event.pointerId}`);
+  pointerNotes.delete(event.pointerId);
 }
 
 function updateNoteGeometry() {
@@ -155,9 +198,12 @@ async function playSound(midi, velocity=.7, length) {
 
 async function pressNote(midi, id) {
   if (held.has(id)) return;
-  const sound = await playSound(midi);
-  held.set(id, { midi, sound });
+  const note = { midi, sound: null };
+  held.set(id, note);
   document.querySelector(`.key[data-note="${midi}"]`)?.classList.add('active');
+  const sound = await playSound(midi);
+  if (held.get(id) === note) note.sound = sound;
+  else sound?.stop?.();
 }
 function releaseNote(id) {
   const note = held.get(id); if (!note) return;
