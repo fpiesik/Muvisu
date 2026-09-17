@@ -4,18 +4,25 @@ const piano = document.querySelector('#piano');
 const playButton = document.querySelector('#playButton');
 const timeline = document.querySelector('#timeline');
 const volumeInput = document.querySelector('#volume');
+const tempoInput = document.querySelector('#tempo');
+const tempoValue = document.querySelector('#tempoValue');
+const midiLibrary = document.querySelector('#midiLibrary');
 const titleElement = document.querySelector('#songTitle');
 const emptyState = document.querySelector('#emptyState');
 const soundStatus = document.querySelector('#soundStatus');
 const toast = document.querySelector('#toast');
 
 const COLORS = ['#ff7a4d', '#ffb85f', '#fa6e9e', '#9b7aff', '#55c9c0', '#ef8d88'];
-const KEYBOARD = { a: 60, w: 61, s: 62, e: 63, d: 64, f: 65, t: 66, g: 67, z: 68, h: 69, u: 70, j: 71, k: 72 };
+const KEYBOARD = {
+  y: 48, s: 49, x: 50, d: 51, c: 52, v: 53, g: 54, b: 55, h: 56, n: 57, j: 58, m: 59, ',': 60,
+  q: 60, '2': 61, w: 62, '3': 63, e: 64, r: 65, '5': 66, t: 67, '6': 68, z: 69, '7': 70, u: 71, i: 72
+};
 const BLACK = new Set([1, 3, 6, 8, 10]);
 let audioContext;
 let instrument;
 let notes = [];
 let duration = 24;
+let sourceBpm = 120;
 let currentTime = 0;
 let startedAt = 0;
 let playing = false;
@@ -60,6 +67,47 @@ function setupPiano() {
   }
   piano.addEventListener('pointerdown', e => { const key = e.target.closest('.key'); if (key) pressNote(+key.dataset.note, 'pointer'); });
   window.addEventListener('pointerup', () => releaseNote('pointer'));
+}
+
+function playbackRate() { return +tempoInput.value / sourceBpm; }
+
+function decodeBase64Midi(value) {
+  const binary = atob(value.replace(/\s/g, ''));
+  return Uint8Array.from(binary, character => character.charCodeAt(0)).buffer;
+}
+
+async function loadMidi(source, name, encoding) {
+  try {
+    let buffer = source;
+    if (!(source instanceof ArrayBuffer)) {
+      const response = await fetch(source);
+      if (!response.ok) throw new Error('MIDI konnte nicht geladen werden');
+      buffer = encoding === 'base64'
+        ? decodeBase64Midi(await response.text())
+        : await response.arrayBuffer();
+    }
+    const parsed = parseMidi(buffer);
+    notes = parsed.notes;
+    sourceBpm = parsed.bpm;
+    tempoInput.value = Math.round(sourceBpm);
+    tempoValue.value = `${Math.round(sourceBpm)} BPM`;
+    if (!notes.length) throw new Error('Keine Noten gefunden');
+    duration = Math.max(...notes.map(n => n.time + n.duration)); currentTime = 0;
+    titleElement.textContent = name.replace(/\.midi?$/i, ''); emptyState.classList.add('hidden');
+    stopPlayback(); updateTransport(); showToast(`${notes.length} Noten geladen`);
+  } catch (err) { showToast(err.message || 'MIDI konnte nicht geladen werden'); }
+}
+
+async function loadLibrary() {
+  try {
+    const response = await fetch('midi/manifest.json');
+    const entries = await response.json();
+    entries.forEach(entry => {
+      const option = new Option(entry.title, `midi/${entry.file}`);
+      option.dataset.encoding = entry.encoding || 'binary';
+      midiLibrary.add(option);
+    });
+  } catch { midiLibrary.closest('.library-control').hidden = true; }
 }
 
 async function ensureAudio() {
@@ -116,28 +164,28 @@ function parseMidi(buffer) {
     } pos=end;
   }
   const secondsPerTick=tempo/1000000/division;
-  return events.map(n => ({...n,time:n.tick*secondsPerTick,duration:Math.max(.08,n.durationTicks*secondsPerTick)}));
+  return { notes: events.map(n => ({...n,time:n.tick*secondsPerTick,duration:Math.max(.08,n.durationTicks*secondsPerTick)})), bpm: 60000000/tempo };
 }
 
 document.querySelector('#midiInput').addEventListener('change', async e => {
   const file=e.target.files[0]; if(!file) return;
-  try { notes=parseMidi(await file.arrayBuffer()); if(!notes.length) throw new Error('Keine Noten gefunden'); duration=Math.max(...notes.map(n=>n.time+n.duration)); currentTime=0; titleElement.textContent=file.name.replace(/\.midi?$/i,''); emptyState.classList.add('hidden'); updateTransport(); showToast(`${notes.length} Noten importiert`); }
-  catch(err) { showToast(err.message); }
+  await loadMidi(await file.arrayBuffer(), file.name);
 });
 
 async function togglePlay() {
   await ensureAudio();
-  if (playing) { currentTime=(performance.now()-startedAt)/1000; stopPlayback(); }
-  else { if(currentTime>=duration-.05) currentTime=0; playing=true; startedAt=performance.now()-currentTime*1000; playButton.innerHTML='<span>Ⅱ</span>'; scheduleFrom(currentTime); }
+  if (playing) { currentTime=(performance.now()-startedAt)/1000*playbackRate(); stopPlayback(); }
+  else { if(currentTime>=duration-.05) currentTime=0; playing=true; startedAt=performance.now()-currentTime/playbackRate()*1000; playButton.innerHTML='<span>Ⅱ</span>'; scheduleFrom(currentTime); }
 }
 function scheduleFrom(time) {
   scheduled.forEach(s=>s.stop?.()); scheduled=[];
-  notes.filter(n=>n.time>=time).forEach(n => { const timer=setTimeout(async()=>scheduled.push(await playSound(n.midi,n.velocity,n.duration)), (n.time-time)*1000); scheduled.push({stop:()=>clearTimeout(timer)}); });
+  const rate=playbackRate();
+  notes.filter(n=>n.time>=time).forEach(n => { const timer=setTimeout(async()=>scheduled.push(await playSound(n.midi,n.velocity,n.duration/rate)), (n.time-time)/rate*1000); scheduled.push({stop:()=>clearTimeout(timer)}); });
 }
 function stopPlayback() { playing=false; playButton.innerHTML='<span>▶</span>'; scheduled.forEach(s=>s.stop?.()); scheduled=[]; }
-function seek(value) { currentTime=value*duration/1000; if(playing) { startedAt=performance.now()-currentTime*1000; scheduleFrom(currentTime); } updateTransport(); }
+function seek(value) { currentTime=value*duration/1000; if(playing) { startedAt=performance.now()-currentTime/playbackRate()*1000; scheduleFrom(currentTime); } updateTransport(); }
 function formatTime(t) { return `${Math.floor(t/60)}:${String(Math.floor(t%60)).padStart(2,'0')}`; }
-function updateTransport() { timeline.value=duration?currentTime/duration*1000:0; document.querySelector('#currentTime').textContent=formatTime(currentTime); document.querySelector('#duration').textContent=formatTime(duration); }
+function updateTransport() { const rate=playbackRate(); timeline.value=duration?currentTime/duration*1000:0; document.querySelector('#currentTime').textContent=formatTime(currentTime/rate); document.querySelector('#duration').textContent=formatTime(duration/rate); }
 function showToast(message) { toast.textContent=message; toast.classList.add('show'); clearTimeout(showToast.timer); showToast.timer=setTimeout(()=>toast.classList.remove('show'),2200); }
 
 function draw() {
@@ -145,7 +193,7 @@ function draw() {
   if(canvas.width!==rect.width*dpr || canvas.height!==rect.height*dpr) { canvas.width=rect.width*dpr; canvas.height=rect.height*dpr; }
   ctx.setTransform(dpr,0,0,dpr,0,0); const w=rect.width,h=rect.height,pianoH=innerWidth<720?90:112, hitY=h-pianoH;
   ctx.clearRect(0,0,w,h);
-  if(playing) { currentTime=(performance.now()-startedAt)/1000; if(currentTime>=duration){currentTime=duration;stopPlayback();} updateTransport(); }
+  if(playing) { currentTime=(performance.now()-startedAt)/1000*playbackRate(); if(currentTime>=duration){currentTime=duration;stopPlayback();} updateTransport(); }
   const min=36,max=84, pxPerSec=105;
   notes.forEach(n => {
     const x=(n.midi-min)/(max-min+1)*w, width=Math.max(5,w/(max-min+1)*.78), y=hitY-(n.time-currentTime)*pxPerSec-n.duration*pxPerSec;
@@ -157,9 +205,19 @@ function draw() {
 }
 
 playButton.addEventListener('click',togglePlay); timeline.addEventListener('input',e=>seek(+e.target.value));
+midiLibrary.addEventListener('change', e => {
+  if (!e.target.value) return;
+  const option = e.target.selectedOptions[0];
+  loadMidi(e.target.value, option.textContent, option.dataset.encoding);
+});
+tempoInput.addEventListener('input', () => {
+  tempoValue.value=`${tempoInput.value} BPM`;
+  if (playing) { startedAt=performance.now()-currentTime/playbackRate()*1000; scheduleFrom(currentTime); }
+  updateTransport();
+});
 document.querySelector('#restartButton').addEventListener('click',()=>seek(0));
 document.querySelector('#helpButton').addEventListener('click',()=>document.querySelector('#helpDialog').showModal());
 document.querySelector('#closeHelp').addEventListener('click',()=>document.querySelector('#helpDialog').close());
 window.addEventListener('keydown',e=>{ if(e.repeat||e.target.matches('input'))return; const key=e.key.toLowerCase(); if(KEYBOARD[key]) pressNote(KEYBOARD[key],key); else if(e.code==='Space'){e.preventDefault();togglePlay();} else if(key==='r')seek(0); });
 window.addEventListener('keyup',e=>releaseNote(e.key.toLowerCase()));
-setupPiano(); updateTransport(); draw();
+setupPiano(); loadLibrary(); updateTransport(); draw();

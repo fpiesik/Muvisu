@@ -25,7 +25,9 @@ Workflow zeigt anschließend die veröffentlichte URL im Deployment-Schritt an.
 ## Bedienung
 
 - **MIDI öffnen** importiert `.mid`- oder `.midi`-Dateien direkt im Browser.
+- Die **MIDI-Bibliothek** lädt Titel aus dem Ordner `midi/`; neue Dateien werden in `midi/manifest.json` eingetragen.
+- Der **Tempo**-Regler passt die Wiedergabe zwischen 40 und 240 BPM an.
 - **Leertaste** startet oder pausiert die Wiedergabe, **R** springt zum Anfang.
-- **A W S E D F T G Z H U J K** spielt die Töne von C4 bis C5.
+- **Y S X D C V G B H N J M ,** spielt die untere Oktave C3–C4; **Q 2 W 3 E R 5 T 6 Z 7 U I** die obere Oktave C4–C5.
 
 Das Piano-Soundfont wird beim ersten Abspielen über jsDelivr geladen. Falls dies nicht möglich ist, steht automatisch ein Web-Audio-Synthesizer als Fallback bereit.
