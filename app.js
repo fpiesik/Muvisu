@@ -29,6 +29,7 @@ let playing = false;
 let scheduled = [];
 const held = new Map();
 const noteGeometry = new Map();
+const arrivingNotes = new Map();
 let noteGeometryDirty = true;
 
 function demoNotes() {
@@ -53,6 +54,7 @@ function setupPiano() {
       key.className = 'key'; key.dataset.note = midi;
       key.dataset.key = Object.keys(KEYBOARD).find(k => KEYBOARD[k] === midi)?.toUpperCase() || '';
       key.setAttribute('aria-label', `MIDI-Note ${midi}`);
+      key.appendChild(Object.assign(document.createElement('span'), { className: 'note-arrival', ariaHidden: 'true' }));
       piano.appendChild(key); whites.push(midi);
     }
   }
@@ -64,6 +66,7 @@ function setupPiano() {
       key.dataset.key = Object.keys(KEYBOARD).find(k => KEYBOARD[k] === midi)?.toUpperCase() || '';
       key.style.left = `${lowerWhites / whites.length * 100}%`;
       key.setAttribute('aria-label', `MIDI-Note ${midi}`);
+      key.appendChild(Object.assign(document.createElement('span'), { className: 'note-arrival', ariaHidden: 'true' }));
       piano.appendChild(key);
     }
   }
@@ -204,6 +207,28 @@ function formatTime(t) { return `${Math.floor(t/60)}:${String(Math.floor(t%60)).
 function updateTransport() { const rate=playbackRate(); timeline.value=duration?currentTime/duration*1000:0; document.querySelector('#currentTime').textContent=formatTime(currentTime/rate); document.querySelector('#duration').textContent=formatTime(duration/rate); }
 function showToast(message) { toast.textContent=message; toast.classList.add('show'); clearTimeout(showToast.timer); showToast.timer=setTimeout(()=>toast.classList.remove('show'),2200); }
 
+function updateArrivingNotes(time) {
+  const next = new Map();
+  notes.forEach(note => {
+    if (note.time <= time && time < note.time + note.duration) {
+      next.set(note.midi, COLORS[note.track % COLORS.length]);
+    }
+  });
+
+  arrivingNotes.forEach((color, midi) => {
+    if (!next.has(midi)) document.querySelector(`.key[data-note="${midi}"]`)?.classList.remove('incoming');
+  });
+  next.forEach((color, midi) => {
+    if (arrivingNotes.get(midi) === color) return;
+    const key = document.querySelector(`.key[data-note="${midi}"]`);
+    if (!key) return;
+    key.style.setProperty('--arrival-color', color);
+    key.classList.add('incoming');
+  });
+  arrivingNotes.clear();
+  next.forEach((color, midi) => arrivingNotes.set(midi, color));
+}
+
 function draw() {
   const dpr=Math.min(devicePixelRatio,2), rect=canvas.getBoundingClientRect();
   if(canvas.width!==rect.width*dpr || canvas.height!==rect.height*dpr) { canvas.width=rect.width*dpr; canvas.height=rect.height*dpr; noteGeometryDirty=true; }
@@ -211,6 +236,7 @@ function draw() {
   ctx.setTransform(dpr,0,0,dpr,0,0); const w=rect.width,h=rect.height,pianoH=innerWidth<720?90:112, hitY=h-pianoH;
   ctx.clearRect(0,0,w,h);
   if(playing) { currentTime=(performance.now()-startedAt)/1000*playbackRate(); if(currentTime>=duration){currentTime=duration;stopPlayback();} updateTransport(); }
+  updateArrivingNotes(currentTime);
   const pxPerSec=105;
   notes.forEach(n => {
     const geometry=noteGeometry.get(n.midi); if(!geometry)return;
