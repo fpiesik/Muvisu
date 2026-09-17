@@ -61,11 +61,13 @@ button, label { -webkit-tap-highlight-color: transparent; }
 .sound-status.ready span { background: #5bd6a0; box-shadow: 0 0 8px #5bd6a0; }
 .piano { position: absolute; z-index: 4; left: 0; right: 0; bottom: 0; height: 112px; display: flex; border-top: 1px solid rgba(255,255,255,.4); background: #ddd; }
 .key { position: relative; flex: 1; height: 100%; background: linear-gradient(#f7f5f1, #d9d7d4); border: 0; border-right: 1px solid #3b3537; border-radius: 0 0 3px 3px; padding: 0; }
+.note-arrival { position: absolute; z-index: 3; top: 0; left: 0; width: 100%; height: 15%; background: var(--arrival-color, var(--accent)); box-shadow: 0 4px 16px var(--arrival-color, var(--accent)); opacity: 0; pointer-events: none; transition: opacity .08s ease; }
+.key.incoming .note-arrival { opacity: .95; }
 .key::after { content: attr(data-key); position: absolute; bottom: 9px; left: 0; right: 0; color: #65646a; font: 500 10px "DM Mono"; opacity: 1; }
 .key.black { position: absolute; z-index: 2; top: 0; width: 2.8%; height: 64%; background: linear-gradient(90deg,#17161a,#302a2e 65%,#17161a); border: 1px solid #070707; border-radius: 0 0 4px 4px; transform: translateX(-50%); }
 .key.black::after { color: #d1cbd0; bottom: 8px; }
-.key.active { background: linear-gradient(#ff946d, #ff6847); box-shadow: 0 0 22px rgba(255,105,71,.65); }
-.key.black.active { background: linear-gradient(#b99fff, #7353cf); }
+.key.active { background: linear-gradient(to bottom, #f7f5f1 0 15%, #ff946d 15%, #ff6847 100%); box-shadow: 0 0 22px rgba(255,105,71,.65); }
+.key.black.active { background: linear-gradient(to bottom, #17161a 0 15%, #b99fff 15%, #7353cf 100%); }
 .transport { padding: 0 28px; gap: 16px; border-top: 1px solid var(--line); }
 .play-button { width: 45px; height: 45px; flex: 0 0 auto; border: 0; border-radius: 50%; background: var(--accent); color: white; cursor: pointer; box-shadow: 0 5px 20px rgba(255,121,77,.25); }
 .play-button:hover { transform: scale(1.05); }
