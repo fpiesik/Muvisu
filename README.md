@@ -10,7 +10,17 @@ Da Musefall ohne Build-Schritt auskommt, genügt ein statischer Webserver:
 python3 -m http.server 8000
 ```
 
-Danach `http://localhost:8000` öffnen. Für GitHub Pages als Quelle einfach den Root des Branches auswählen.
+Danach `http://localhost:8000` öffnen.
+
+## Auf GitHub Pages veröffentlichen
+
+Der Workflow [`.github/workflows/deploy-pages.yml`](.github/workflows/deploy-pages.yml)
+veröffentlicht die statischen Dateien bei jedem Push auf `main`. Er lässt sich unter
+**Actions → GitHub Pages bereitstellen → Run workflow** auch manuell starten.
+
+Damit die Veröffentlichung funktioniert, muss unter **Settings → Pages → Build and
+deployment → Source** einmalig **GitHub Actions** ausgewählt sein. Der erfolgreiche
+Workflow zeigt anschließend die veröffentlichte URL im Deployment-Schritt an.
 
 ## Bedienung
 
