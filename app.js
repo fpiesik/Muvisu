@@ -28,6 +28,8 @@ let startedAt = 0;
 let playing = false;
 let scheduled = [];
 const held = new Map();
+const noteGeometry = new Map();
+let noteGeometryDirty = true;
 
 function demoNotes() {
   const progression = [[48,55,60,64], [45,52,57,60], [41,48,53,57], [43,50,55,59]];
@@ -67,6 +69,20 @@ function setupPiano() {
   }
   piano.addEventListener('pointerdown', e => { const key = e.target.closest('.key'); if (key) pressNote(+key.dataset.note, 'pointer'); });
   window.addEventListener('pointerup', () => releaseNote('pointer'));
+  noteGeometryDirty = true;
+}
+
+function updateNoteGeometry() {
+  const canvasRect = canvas.getBoundingClientRect();
+  noteGeometry.clear();
+  piano.querySelectorAll('.key').forEach(key => {
+    const keyRect = key.getBoundingClientRect();
+    noteGeometry.set(+key.dataset.note, {
+      center: keyRect.left - canvasRect.left + keyRect.width / 2,
+      width: keyRect.width * .9
+    });
+  });
+  noteGeometryDirty = false;
 }
 
 function playbackRate() { return +tempoInput.value / sourceBpm; }
@@ -190,19 +206,23 @@ function showToast(message) { toast.textContent=message; toast.classList.add('sh
 
 function draw() {
   const dpr=Math.min(devicePixelRatio,2), rect=canvas.getBoundingClientRect();
-  if(canvas.width!==rect.width*dpr || canvas.height!==rect.height*dpr) { canvas.width=rect.width*dpr; canvas.height=rect.height*dpr; }
+  if(canvas.width!==rect.width*dpr || canvas.height!==rect.height*dpr) { canvas.width=rect.width*dpr; canvas.height=rect.height*dpr; noteGeometryDirty=true; }
+  if(noteGeometryDirty) updateNoteGeometry();
   ctx.setTransform(dpr,0,0,dpr,0,0); const w=rect.width,h=rect.height,pianoH=innerWidth<720?90:112, hitY=h-pianoH;
   ctx.clearRect(0,0,w,h);
   if(playing) { currentTime=(performance.now()-startedAt)/1000*playbackRate(); if(currentTime>=duration){currentTime=duration;stopPlayback();} updateTransport(); }
-  const min=36,max=84, pxPerSec=105;
+  const pxPerSec=105;
   notes.forEach(n => {
-    const x=(n.midi-min)/(max-min+1)*w, width=Math.max(5,w/(max-min+1)*.78), y=hitY-(n.time-currentTime)*pxPerSec-n.duration*pxPerSec;
+    const geometry=noteGeometry.get(n.midi); if(!geometry)return;
+    const width=Math.max(5,geometry.width), x=geometry.center-width/2, y=hitY-(n.time-currentTime)*pxPerSec-n.duration*pxPerSec;
     const nh=Math.max(8,n.duration*pxPerSec); if(y>hitY||y+nh<0)return;
     const color=COLORS[n.track%COLORS.length]; ctx.shadowColor=color; ctx.shadowBlur=(y+nh>=hitY-5)?16:0; ctx.fillStyle=color; ctx.globalAlpha=.93;
     ctx.beginPath(); ctx.roundRect(x,y,width,nh,Math.min(7,width/2)); ctx.fill();
   });
   ctx.globalAlpha=1; ctx.shadowBlur=0; requestAnimationFrame(draw);
 }
+
+new ResizeObserver(() => { noteGeometryDirty=true; }).observe(piano);
 
 playButton.addEventListener('click',togglePlay); timeline.addEventListener('input',e=>seek(+e.target.value));
 midiLibrary.addEventListener('change', e => {
