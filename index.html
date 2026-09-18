@@ -23,6 +23,26 @@
           <span class="eyebrow">NOW PLAYING</span>
           <strong id="songTitle">Nocturne in Neon</strong>
         </div>
+        <div class="transport" role="group" aria-label="Wiedergabesteuerung">
+          <button class="play-button" id="playButton" aria-label="Wiedergabe starten"><span>▶</span></button>
+          <button class="plain-control" id="restartButton" aria-label="Zum Anfang">↶</button>
+          <div class="time" id="currentTime">0:00</div>
+          <input class="timeline" id="timeline" type="range" min="0" max="1000" value="0" aria-label="Position" />
+          <div class="time muted" id="duration">0:24</div>
+          <div class="divider"></div>
+          <button class="metronome-control" id="metronomeButton" type="button" aria-label="Metronom einschalten" aria-pressed="false">
+            <span class="metronome-icon" aria-hidden="true"><i></i></span>
+            <span>Metronom</span>
+          </button>
+          <label class="tempo-control" for="tempo">
+            <span>Tempo</span>
+            <input id="tempo" type="range" min="40" max="240" value="120" step="1" />
+            <output id="tempoValue" for="tempo">120 BPM</output>
+          </label>
+          <label class="volume-control" aria-label="Lautstärke">
+            <span>◖</span><input id="volume" type="range" min="0" max="1" value="0.72" step="0.01" />
+          </label>
+        </div>
         <div class="header-actions">
           <label class="library-control" for="midiLibrary">
             <span class="eyebrow">MIDI-BIBLIOTHEK</span>
@@ -50,27 +70,6 @@
         <div id="piano" class="piano" aria-label="Klaviatur"></div>
       </section>
 
-      <footer class="transport">
-        <button class="play-button" id="playButton" aria-label="Wiedergabe starten"><span>▶</span></button>
-        <div class="time" id="currentTime">0:00</div>
-        <input class="timeline" id="timeline" type="range" min="0" max="1000" value="0" aria-label="Position" />
-        <div class="time muted" id="duration">0:24</div>
-        <div class="divider"></div>
-        <button class="plain-control" id="restartButton" aria-label="Zum Anfang">↶</button>
-        <button class="metronome-control" id="metronomeButton" type="button" aria-label="Metronom einschalten" aria-pressed="false">
-          <span class="metronome-icon" aria-hidden="true"><i></i></span>
-          <span>Metronom</span>
-        </button>
-        <label class="tempo-control" for="tempo">
-          <span>Tempo</span>
-          <input id="tempo" type="range" min="40" max="240" value="120" step="1" />
-          <output id="tempoValue" for="tempo">120 BPM</output>
-        </label>
-        <label class="volume-control" aria-label="Lautstärke">
-          <span>◖</span><input id="volume" type="range" min="0" max="1" value="0.72" step="0.01" />
-        </label>
-        <div class="keyboard-hint"><kbd>Y</kbd><kbd>S</kbd><kbd>X</kbd><span>zum Mitspielen</span></div>
-      </footer>
     </main>
 
     <dialog id="helpDialog">
