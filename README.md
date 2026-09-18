@@ -27,6 +27,7 @@ Workflow zeigt anschließend die veröffentlichte URL im Deployment-Schritt an.
 - **MIDI öffnen** importiert `.mid`- oder `.midi`-Dateien direkt im Browser.
 - Die **MIDI-Bibliothek** lädt Titel aus dem Ordner `midi/`; neue Dateien werden in `midi/manifest.json` eingetragen.
 - Der **Tempo**-Regler passt die Wiedergabe zwischen 40 und 240 BPM an.
+- Das zuschaltbare **Metronom** gibt während der Wiedergabe den Takt an; der erste Schlag jedes Vierertakts wird betont.
 - **Leertaste** startet oder pausiert die Wiedergabe, **R** springt zum Anfang.
 - **Y S X D C V G B H N J M ,** spielt die untere Oktave C3–C4; **Q 2 W 3 E R 5 T 6 Z 7 U I** die obere Oktave C4–C5.
 - Auf Touch-Geräten lässt sich die Klaviatur mit mehreren Fingern spielen; beim Streichen wechseln die Töne mit den berührten Tasten.
