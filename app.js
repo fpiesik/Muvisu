@@ -6,6 +6,7 @@ const timeline = document.querySelector('#timeline');
 const volumeInput = document.querySelector('#volume');
 const tempoInput = document.querySelector('#tempo');
 const tempoValue = document.querySelector('#tempoValue');
+const metronomeButton = document.querySelector('#metronomeButton');
 const midiLibrary = document.querySelector('#midiLibrary');
 const titleElement = document.querySelector('#songTitle');
 const emptyState = document.querySelector('#emptyState');
@@ -27,6 +28,11 @@ let currentTime = 0;
 let startedAt = 0;
 let playing = false;
 let scheduled = [];
+let metronomeEnabled = false;
+let metronomeTimer;
+let nextMetronomeBeat = 0;
+let metronomeGeneration = 0;
+const metronomeSounds = new Set();
 const held = new Map();
 const pointerNotes = new Map();
 const noteGeometry = new Map();
@@ -196,6 +202,73 @@ async function playSound(midi, velocity=.7, length) {
   return { stop: () => { try { osc.stop(); } catch {} } };
 }
 
+function playMetronomeClick(when, accented) {
+  if (!audioContext) return;
+  const osc = audioContext.createOscillator();
+  const gain = audioContext.createGain();
+  osc.type = 'square';
+  osc.frequency.setValueAtTime(accented ? 1320 : 880, when);
+  gain.gain.setValueAtTime(.0001, when);
+  gain.gain.exponentialRampToValueAtTime((accented ? .16 : .1) * +volumeInput.value, when + .002);
+  gain.gain.exponentialRampToValueAtTime(.0001, when + .045);
+  osc.connect(gain).connect(audioContext.destination);
+  osc.start(when); osc.stop(when + .05);
+  metronomeSounds.add(osc);
+  osc.addEventListener('ended', () => metronomeSounds.delete(osc), { once: true });
+}
+
+function scheduleMetronome() {
+  if (!playing || !metronomeEnabled || !audioContext) return;
+  const rate = playbackRate();
+  const beatDuration = 60 / sourceBpm;
+  const songTime = (performance.now() - startedAt) / 1000 * rate;
+  const horizon = songTime + .12 * rate;
+  while (nextMetronomeBeat * beatDuration <= horizon) {
+    const beatTime = nextMetronomeBeat * beatDuration;
+    if (beatTime >= songTime - .01) {
+      const delay = Math.max(0, (beatTime - songTime) / rate);
+      const generation = metronomeGeneration;
+      playMetronomeClick(audioContext.currentTime + delay, nextMetronomeBeat % 4 === 0);
+      setTimeout(() => {
+        if (!metronomeEnabled || !playing || generation !== metronomeGeneration) return;
+        metronomeButton.classList.remove('beat');
+        void metronomeButton.offsetWidth;
+        metronomeButton.classList.add('beat');
+      }, delay * 1000);
+    }
+    nextMetronomeBeat++;
+  }
+}
+
+function stopMetronome() {
+  metronomeGeneration++;
+  clearInterval(metronomeTimer);
+  metronomeTimer = undefined;
+  metronomeButton.classList.remove('beat');
+  metronomeSounds.forEach(sound => { try { sound.stop(); } catch {} });
+  metronomeSounds.clear();
+}
+
+function startMetronome(time = currentTime) {
+  stopMetronome();
+  if (!metronomeEnabled || !playing) return;
+  const beatDuration = 60 / sourceBpm;
+  nextMetronomeBeat = Math.ceil((time - .01) / beatDuration);
+  scheduleMetronome();
+  metronomeTimer = setInterval(scheduleMetronome, 25);
+}
+
+async function toggleMetronome() {
+  metronomeEnabled = !metronomeEnabled;
+  metronomeButton.setAttribute('aria-pressed', metronomeEnabled);
+  metronomeButton.setAttribute('aria-label', `Metronom ${metronomeEnabled ? 'ausschalten' : 'einschalten'}`);
+  if (metronomeEnabled) {
+    await ensureAudio();
+    startMetronome();
+  } else stopMetronome();
+  showToast(`Metronom ${metronomeEnabled ? 'ein' : 'aus'}`);
+}
+
 async function pressNote(midi, id) {
   if (held.has(id)) return;
   const note = { midi, sound: null };
@@ -240,15 +313,15 @@ document.querySelector('#midiInput').addEventListener('change', async e => {
 async function togglePlay() {
   await ensureAudio();
   if (playing) { currentTime=(performance.now()-startedAt)/1000*playbackRate(); stopPlayback(); }
-  else { if(currentTime>=duration-.05) currentTime=0; playing=true; startedAt=performance.now()-currentTime/playbackRate()*1000; playButton.innerHTML='<span>Ⅱ</span>'; scheduleFrom(currentTime); }
+  else { if(currentTime>=duration-.05) currentTime=0; playing=true; startedAt=performance.now()-currentTime/playbackRate()*1000; playButton.innerHTML='<span>Ⅱ</span>'; scheduleFrom(currentTime); startMetronome(currentTime); }
 }
 function scheduleFrom(time) {
   scheduled.forEach(s=>s.stop?.()); scheduled=[];
   const rate=playbackRate();
   notes.filter(n=>n.time>=time).forEach(n => { const timer=setTimeout(async()=>scheduled.push(await playSound(n.midi,n.velocity,n.duration/rate)), (n.time-time)/rate*1000); scheduled.push({stop:()=>clearTimeout(timer)}); });
 }
-function stopPlayback() { playing=false; playButton.innerHTML='<span>▶</span>'; scheduled.forEach(s=>s.stop?.()); scheduled=[]; }
-function seek(value) { currentTime=value*duration/1000; if(playing) { startedAt=performance.now()-currentTime/playbackRate()*1000; scheduleFrom(currentTime); } updateTransport(); }
+function stopPlayback() { playing=false; playButton.innerHTML='<span>▶</span>'; scheduled.forEach(s=>s.stop?.()); scheduled=[]; stopMetronome(); }
+function seek(value) { currentTime=value*duration/1000; if(playing) { startedAt=performance.now()-currentTime/playbackRate()*1000; scheduleFrom(currentTime); startMetronome(currentTime); } updateTransport(); }
 function formatTime(t) { return `${Math.floor(t/60)}:${String(Math.floor(t%60)).padStart(2,'0')}`; }
 function updateTransport() { const rate=playbackRate(); timeline.value=duration?currentTime/duration*1000:0; document.querySelector('#currentTime').textContent=formatTime(currentTime/rate); document.querySelector('#duration').textContent=formatTime(duration/rate); }
 function showToast(message) { toast.textContent=message; toast.classList.add('show'); clearTimeout(showToast.timer); showToast.timer=setTimeout(()=>toast.classList.remove('show'),2200); }
@@ -297,6 +370,7 @@ function draw() {
 new ResizeObserver(() => { noteGeometryDirty=true; }).observe(piano);
 
 playButton.addEventListener('click',togglePlay); timeline.addEventListener('input',e=>seek(+e.target.value));
+metronomeButton.addEventListener('click', toggleMetronome);
 midiLibrary.addEventListener('change', e => {
   if (!e.target.value) return;
   const option = e.target.selectedOptions[0];
@@ -304,7 +378,7 @@ midiLibrary.addEventListener('change', e => {
 });
 tempoInput.addEventListener('input', () => {
   tempoValue.value=`${tempoInput.value} BPM`;
-  if (playing) { startedAt=performance.now()-currentTime/playbackRate()*1000; scheduleFrom(currentTime); }
+  if (playing) { startedAt=performance.now()-currentTime/playbackRate()*1000; scheduleFrom(currentTime); startMetronome(currentTime); }
   updateTransport();
 });
 document.querySelector('#restartButton').addEventListener('click',()=>seek(0));
